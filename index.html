@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>AI Dungeon Master</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Georgia', serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #e0e0e0;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+.story-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    background: rgba(139, 69, 19, 0.1);
+    border-right: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.story-header {
+    text-align: center;
+    padding: 20px;
+    background: rgba(139, 69, 19, 0.3);
+    border: 2px solid rgba(255, 215, 0, 0.4);
+    border-radius: 10px 10px 0 0;
+    margin-bottom: 10px;
+}
+
+.story-header h1 {
+    color: #FFD700;
+    font-size: 2.5em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    letter-spacing: 2px;
+}
+
+.scenario-selector {
+    margin-top: 15px;
+}
+
+.scenario-selector select {
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #FFD700;
+    border: 2px solid rgba(255, 215, 0, 0.5);
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    font-family: 'Georgia', serif;
+}
+
+.scenario-selector button {
+    padding: 10px 30px;
+    margin-left: 10px;
+    background: linear-gradient(135deg, #8B4513, #654321);
+    color: #FFD700;
+    border: 2px solid #FFD700;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.scenario-selector button:hover {
+    background: linear-gradient(135deg, #654321, #8B4513);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+.story-display {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    background: rgba(222, 184, 135, 0.15);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 0 0 10px 10px;
+    margin-bottom: 20px;
+    backdrop-filter: blur(5px);
+}
+
+.story-display::-webkit-scrollbar {
+    width: 10px;
+}
+
+.story-display::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.story-display::-webkit-scrollbar-thumb {
+    background: rgba(255, 215, 0, 0.5);
+    border-radius: 5px;
+}
+
+.story-entry {
+    margin-bottom: 20px;
+    padding: 15px;
+    border-radius: 8px;
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.story-entry.system {
+    background: rgba(139, 69, 19, 0.3);
+    border-left: 4px solid #FFD700;
+}
+
+.story-entry.player {
+    background: rgba(70, 130, 180, 0.3);
+    border-left: 4px solid #4682B4;
+    margin-left: 30px;
+}
+
+.story-entry .label {
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    font-size: 0.9em;
+    letter-spacing: 1px;
+}
+
+.story-entry.system .label {
+    color: #FFD700;
+}
+
+.story-entry.player .label {
+    color: #87CEEB;
+}
+
+.story-entry .text {
+    line-height: 1.8;
+    color: #e0e0e0;
+}
+
+.input-section {
+    background: rgba(0, 0, 0, 0.5);
+    padding: 20px;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 10px;
+}
+
+.input-section textarea {
+    width: 100%;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #e0e0e0;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 5px;
+    font-family: 'Georgia', serif;
+    font-size: 1em;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.input-section textarea:focus {
+    outline: none;
+    border-color: #FFD700;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.input-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.input-controls button {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #8B4513, #654321);
+    color: #FFD700;
+    border: 2px solid #FFD700;
+    border-radius: 5px;
+    font-size: 1em;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+}
+
+.input-controls button:hover:not(:disabled) {
+    background: linear-gradient(135deg, #654321, #8B4513);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+.input-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.char-count {
+    color: #FFD700;
+    font-size: 0.9em;
+}
+
+.character-panel {
+    width: 350px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.4);
+    overflow-y: auto;
+    border-left: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.character-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.character-panel::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.character-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 215, 0, 0.5);
+    border-radius: 4px;
+}
+
+.panel-section {
+    background: rgba(139, 69, 19, 0.2);
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.panel-section h2 {
+    color: #FFD700;
+    font-size: 1.3em;
+    margin-bottom: 15px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.stat-item {
+    margin-bottom: 15px;
+}
+
+.stat-label {
+    color: #FFD700;
+    font-weight: bold;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    text-transform: uppercase;
+}
+
+.stat-value {
+    color: #e0e0e0;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 5px;
+    border-left: 3px solid #FFD700;
+}
+
+.health-bar {
+    width: 100%;
+    height: 25px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+}
+
+.health-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff4444, #ff8844);
+    transition: width 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.inventory-list {
+    list-style: none;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.inventory-list li {
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    margin-bottom: 5px;
+    border-radius: 5px;
+    border-left: 3px solid #4682B4;
+    color: #e0e0e0;
+}
+
+.controls-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.controls-section button {
+    padding: 12px;
+    background: rgba(139, 69, 19, 0.5);
+    color: #FFD700;
+    border: 2px solid rgba(255, 215, 0, 0.4);
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+    font-family: 'Georgia', serif;
+}
+
+.controls-section button:hover {
+    background: rgba(139, 69, 19, 0.8);
+    border-color: #FFD700;
+    transform: translateX(5px);
+}
+
+.loading {
+    text-align: center;
+    color: #FFD700;
+    font-style: italic;
+    padding: 15px;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.welcome-message {
+    text-align: center;
+    color: #FFD700;
+    padding: 40px;
+    font-size: 1.2em;
+    line-height: 2;
+}
+
+.api-status {
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 0.8em;
+    margin-top: 10px;
+}
+
+.api-status.connected {
+    background: rgba(0, 255, 0, 0.2);
+    color: #00ff00;
+    border: 1px solid #00ff00;
+}
+
+.api-status.disconnected {
+    background: rgba(255, 0, 0, 0.2);
+    color: #ff6666;
+    border: 1px solid #ff0000;
+}
+
+@media (max-width: 968px) {
+    .container {
+        flex-direction: column;
+    }
+    .character-panel {
+        width: 100%;
+        max-height: 300px;
+    }
+    .story-panel {
+        border-right: none;
+        border-bottom: 2px solid rgba(255, 215, 0, 0.3);
+    }
+}
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="story-panel">
+        <div class="story-header">
+            <h1>⚔️ AI Dungeon Master ⚔️</h1>
+            <div class="scenario-selector">
+                <select id="scenarioSelect">
+                    <option value="">Select Your Adventure...</option>
+                    <option value="fantasy">🏰 The Stolen Artifact (Fantasy)</option>
+                    <option value="scifi">🚀 Station Alpha-9 (Sci-Fi)</option>
+                    <option value="mystery">🔍 The Midnight Caller (Mystery)</option>
+                    <option value="horror">💀 The Last Survivor (Horror)</option>
+                    <option value="custom">✨ Custom Adventure</option>
+                </select>
+                <button id="startBtn" onclick="startGame()">Begin Quest</button>
+            </div>
+            <div id="apiStatus" class="api-status disconnected">Checking AI connection...</div>
+        </div>
+
+        <div class="story-display" id="storyDisplay">
+            <div class="welcome-message">
+                <p>Welcome, brave adventurer!</p>
+                <p>Select a scenario above and begin your quest.</p>
+                <p>Your choices will shape the story...</p>
+            </div>
+        </div>
+
+        <div class="input-section">
+            <textarea 
+                id="playerInput" 
+                placeholder="What do you do? (Press Enter to submit)"
+                maxlength="500"
+                disabled
+            ></textarea>
+            <div class="input-controls">
+                <button id="submitBtn" onclick="sendAction()" disabled>⚔️ Take Action</button>
+                <span class="char-count"><span id="charCount">0</span>/500</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="character-panel">
+        <div class="panel-section">
+            <h2>⚔️ Character Stats</h2>
+            <div class="stat-item">
+                <div class="stat-label">Health</div>
+                <div class="health-bar">
+                    <div class="health-fill" id="healthBar" style="width: 100%;">100/100</div>
+                </div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Location</div>
+                <div class="stat-value" id="location">Unknown</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Quest</div>
+                <div class="stat-value" id="quest">No active quest</div>
+            </div>
+        </div>
+
+        <div class="panel-section">
+            <h2>🎒 Inventory</h2>
+            <ul class="inventory-list" id="inventoryList">
+                <li style="text-align: center; opacity: 0.6;">Empty</li>
+            </ul>
+        </div>
+
+        <div class="panel-section">
+            <h2>📜 Memory</h2>
+            <div class="stat-item">
+                <div class="stat-value" id="memory">Your journey begins...</div>
+            </div>
+        </div>
+
+        <div class="panel-section controls-section">
+            <h2>🎮 Controls</h2>
+            <button onclick="saveStory()">💾 Save Story</button>
+            <button onclick="document.getElementById('loadGameInput').click()">📂 Load Story</button>
+            <input type="file" id="loadGameInput" accept=".txt" style="display: none;" onchange="loadGame(event)">
+            <button onclick="resetGame()">🔄 Reset Game</button>
+        </div>
+    </div>
+</div>
+
+<script>
+
+const API_URL = "https://ai-dungeon-master-tu3d.onrender.com";
+
+let gameState = {
+    health: 100,
+    maxHealth: 100,
+    location: 'Unknown',
+    inventory: [],
+    quest: 'No active quest',
+    memory: 'Your journey begins...',
+    context: '',
+    history: [],
+    isActive: false
+};
+
+// Check API connection on load
+async function checkAPIConnection() {
+    try {
+        const response = await fetch(API_URL.replace('/generate', '/health'));
+        const data = await response.json();
+        
+        if (data.status === 'ok') {
+            const statusDiv = document.getElementById('apiStatus');
+            statusDiv.className = 'api-status connected';
+            statusDiv.textContent = `✓ AI Model Connected (${data.model})`;
+        }
+    } catch (error) {
+        const statusDiv = document.getElementById('apiStatus');
+        statusDiv.className = 'api-status disconnected';
+        statusDiv.textContent = '✗ AI Model Disconnected - Start the backend server';
+        console.error('API connection failed:', error);
+    }
+}
+
+// Check connection on page load
+checkAPIConnection();
+
+const playerInput = document.getElementById('playerInput');
+playerInput.addEventListener('input', () => {
+    document.getElementById('charCount').textContent = playerInput.value.length;
+});
+
+playerInput.addEventListener('keypress', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendAction();
+    }
+});
+
+const scenarios = {
+    fantasy: {
+        title: "The Stolen Artifact",
+        intro: "You wake in a dimly lit tavern. Your head throbs with pain. The last thing you remember is accepting a drink from a hooded stranger. Your coin purse is missing, but worse - so is the ancient amulet you were transporting to the High Mage. Without it, the kingdom's protective barrier will fail within three days.",
+        location: "Rusty Tankard Tavern",
+        quest: "Recover the stolen amulet"
+    },
+    scifi: {
+        title: "Station Alpha-9",
+        intro: "Red emergency lights bathe everything in an ominous glow. You regain consciousness in the medical bay of Station Alpha-9. Through the viewport, you see the distant blue marble of Earth. The station's AI speaks: 'Critical malfunction detected. Life support failing. Crew status: Unknown. You are alone.'",
+        location: "Medical Bay - Station Alpha-9",
+        quest: "Restore life support and find the crew"
+    },
+    mystery: {
+        title: "The Midnight Caller",
+        intro: "The phone rang at exactly midnight. The voice was familiar, yet distorted. 'They know what you did,' it whispered before the line went dead. You're a private investigator, but this case is personal. Someone knows your secret. Rain hammers against your office window as you contemplate your next move.",
+        location: "Your Office - Downtown",
+        quest: "Uncover the midnight caller's identity"
+    },
+    horror: {
+        title: "The Last Survivor",
+        intro: "The cabin's door hangs off its hinges. Blood trails lead into the forest. You're the only one left from your camping group. Three days ago, there were eight of you, laughing around the campfire. Now, only silence and the sound of something large moving through the trees. Your phone has no signal. You have one flashlight with dying batteries.",
+        location: "Abandoned Cabin - Dark Woods",
+        quest: "Survive and escape the forest"
+    },
+    custom: {
+        title: "Custom Adventure",
+        intro: "You stand at a crossroads. Describe your character and the world you find yourself in. What kind of adventure calls to you? Speak your vision into existence...",
+        location: "The Beginning",
+        quest: "Create your destiny"
+    }
+};
+
+function startGame() {
+    const scenario = document.getElementById('scenarioSelect').value;
+    if (!scenario) {
+        alert('Please select a scenario first!');
+        return;
+    }
+
+    const chosen = scenarios[scenario];
+    gameState = {
+        health: 100,
+        maxHealth: 100,
+        location: chosen.location,
+        inventory: [],
+        quest: chosen.quest,
+        memory: 'Your journey begins...',
+        context: chosen.intro,
+        history: [],
+        isActive: true
+    };
+
+    document.getElementById('storyDisplay').innerHTML = '';
+    addStoryEntry('system', chosen.intro);
+    
+    playerInput.disabled = false;
+    document.getElementById('submitBtn').disabled = false;
+    playerInput.focus();
+    
+    updateCharacterSheet();
+}
+
+async function sendAction() {
+    const action = playerInput.value.trim();
+    if (!action || !gameState.isActive) return;
+
+    playerInput.disabled = true;
+    document.getElementById('submitBtn').disabled = true;
+
+    addStoryEntry('player', action);
+    const loadingId = addLoadingMessage();
+
+    try {
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                context: gameState.context,
+                player_action: action,
+                max_length: 150
+            })
+        });
+
+        if (!res.ok) {
+            throw new Error(`API error: ${res.status}`);
+        }
+
+        const data = await res.json();
+        const response = data.response || "The Dungeon Master is silent...";
+        const stateChanges = data.state_changes || {};
+
+        document.getElementById(loadingId).remove();
+        addStoryEntry('system', response);
+
+        // Update context
+        gameState.context += ` ${action} ${response}`;
+        if (gameState.context.length > 2000) {
+            gameState.context = gameState.context.slice(-2000);
+        }
+
+        // Apply state changes from the model
+        applyStateChanges(stateChanges);
+        
+        // Also apply keyword-based changes
+        updateGameState(action, response);
+
+    } catch (err) {
+        document.getElementById(loadingId).remove();
+        addStoryEntry('system', "The Dungeon Master's connection wavers... (Please ensure the backend server is running)");
+        console.error('API Error:', err);
+    } finally {
+        playerInput.value = '';
+        document.getElementById('charCount').textContent = '0';
+        playerInput.disabled = false;
+        document.getElementById('submitBtn').disabled = false;
+        playerInput.focus();
+        
+        const display = document.getElementById('storyDisplay');
+        display.scrollTop = display.scrollHeight;
+    }
+}
+
+function applyStateChanges(changes) {
+    // Apply health changes from model
+    if (changes.health_change) {
+        gameState.health = Math.max(0, Math.min(gameState.maxHealth, 
+            gameState.health + changes.health_change));
+    }
+    
+    // Add new items
+    if (changes.new_items && changes.new_items.length > 0) {
+        changes.new_items.forEach(item => {
+            if (!gameState.inventory.includes(item)) {
+                gameState.inventory.push(item);
+            }
+        });
+    }
+    
+    // Update location from hints
+    if (changes.location_hints && changes.location_hints.length > 0) {
+        gameState.location = changes.location_hints[0];
+    }
+    
+    updateCharacterSheet();
+}
+
+function updateGameState(action, response) {
+    const lowerAction = action.toLowerCase();
+    const lowerResponse = response.toLowerCase();
+
+    // Health changes based on keywords
+    if (lowerAction.includes('fight') || lowerAction.includes('attack') || 
+        lowerResponse.includes('wounded') || lowerResponse.includes('hurt')) {
+        gameState.health = Math.max(0, gameState.health - 15);
+    } else if (lowerAction.includes('heal') || lowerAction.includes('rest') || 
+               lowerResponse.includes('recover')) {
+        gameState.health = Math.min(gameState.maxHealth, gameState.health + 20);
+    }
+
+    // Inventory changes
+    if (lowerAction.includes('take') || lowerAction.includes('pick up') || 
+        lowerAction.includes('grab')) {
+        const words = action.split(' ');
+        const item = words[words.length - 1];
+        if (item.length > 2 && !gameState.inventory.includes(item)) {
+            gameState.inventory.push(item);
+        }
+    }
+
+    // Location changes
+    if (lowerAction.includes('go to') || lowerAction.includes('enter') || 
+        lowerAction.includes('walk to')) {
+        const locations = ['Dark Forest', 'Ancient Temple', 'Mountain Pass', 
+                          'Mysterious Cave', 'Village Square', 'Hidden Chamber',
+                          'Abandoned Mine', 'Sacred Grove'];
+        gameState.location = locations[Math.floor(Math.random() * locations.length)];
+    }
+
+    updateCharacterSheet();
+}
+
+function addStoryEntry(type, text) {
+    const display = document.getElementById('storyDisplay');
+    const entry = document.createElement('div');
+    entry.className = `story-entry ${type}`;
+    
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = type === 'system' ? '📜 Dungeon Master' : '⚔️ You';
+    
+    const content = document.createElement('div');
+    content.className = 'text';
+    content.textContent = text;
+    
+    entry.appendChild(label);
+    entry.appendChild(content);
+    display.appendChild(entry);
+    
+    gameState.history.push({ type, text });
+}
+
+function addLoadingMessage() {
+    const display = document.getElementById('storyDisplay');
+    const loading = document.createElement('div');
+    const id = 'loading-' + Date.now();
+    loading.id = id;
+    loading.className = 'loading';
+    loading.textContent = 'The AI weaves your tale...';
+    display.appendChild(loading);
+    return id;
+}
+
+function updateCharacterSheet() {
+    const healthPercent = (gameState.health / gameState.maxHealth) * 100;
+    const healthBar = document.getElementById('healthBar');
+    healthBar.style.width = healthPercent + '%';
+    healthBar.textContent = `${gameState.health}/${gameState.maxHealth}`;
+    
+    // Change health bar color based on health
+    if (healthPercent > 60) {
+        healthBar.style.background = 'linear-gradient(90deg, #44ff44, #88ff44)';
+    } else if (healthPercent > 30) {
+        healthBar.style.background = 'linear-gradient(90deg, #ffaa44, #ff8844)';
+    } else {
+        healthBar.style.background = 'linear-gradient(90deg, #ff4444, #ff0000)';
+    }
+    
+    document.getElementById('location').textContent = gameState.location;
+    document.getElementById('quest').textContent = gameState.quest;
+
+    const inventoryList = document.getElementById('inventoryList');
+    inventoryList.innerHTML = gameState.inventory.length === 0
+        ? '<li style="text-align:center;opacity:0.6;">Empty</li>'
+        : gameState.inventory.map(i => `<li>${i}</li>`).join('');
+
+    document.getElementById('memory').textContent =
+        gameState.history.length > 0
+            ? `Last: ${gameState.history[gameState.history.length - 1].text.substring(0, 80)}...`
+            : 'Your journey begins...';
+}
+
+function saveStory() {
+    if (gameState.history.length === 0) {
+        alert('No story to save yet!');
+        return;
+    }
+
+    let storyText = '=== AI DUNGEON MASTER - STORY LOG ===\n\n';
+    storyText += `Health: ${gameState.health}/${gameState.maxHealth}\n`;
+    storyText += `Location: ${gameState.location}\n`;
+    storyText += `Quest: ${gameState.quest}\n`;
+    storyText += `Inventory: ${gameState.inventory.join(', ') || 'Empty'}\n\n`;
+    storyText += '--- STORY ---\n\n';
+    
+    gameState.history.forEach(entry => {
+        storyText += `[${entry.type.toUpperCase()}]: ${entry.text}\n\n`;
+    });
+
+    const blob = new Blob([storyText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dungeon-story-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function loadGame(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const content = e.target.result;
+            
+            if (!content.includes('=== AI DUNGEON MASTER - STORY LOG ===')) {
+                throw new Error('Invalid save file format');
+            }
+
+            const lines = content.split('\n');
+            const entries = [];
+            
+            // Parse stats
+            let health = 100, location = 'Unknown', quest = 'Continue your adventure';
+            let inventory = [];
+            
+            for (let line of lines) {
+                if (line.startsWith('Health:')) {
+                    const match = line.match(/(\d+)\/(\d+)/);
+                    if (match) health = parseInt(match[1]);
+                } else if (line.startsWith('Location:')) {
+                    location = line.replace('Location:', '').trim();
+                } else if (line.startsWith('Quest:')) {
+                    quest = line.replace('Quest:', '').trim();
+                } else if (line.startsWith('Inventory:')) {
+                    const items = line.replace('Inventory:', '').trim();
+                    if (items && items !== 'Empty') {
+                        inventory = items.split(',').map(i => i.trim());
+                    }
+                } else if (line.startsWith('[SYSTEM]:')) {
+                    entries.push({
+                        type: 'system',
+                        text: line.substring('[SYSTEM]:'.length).trim()
+                    });
+                } else if (line.startsWith('[PLAYER]:')) {
+                    entries.push({
+                        type: 'player',
+                        text: line.substring('[PLAYER]:'.length).trim()
+                    });
+                }
+            }
+
+            if (entries.length === 0) {
+                throw new Error('No valid story entries found');
+            }
+
+            gameState = {
+                health: health,
+                maxHealth: 100,
+                location: location,
+                inventory: inventory,
+                quest: quest,
+                memory: 'Story resumed...',
+                context: entries.map(e => e.text).join(' ').slice(-2000),
+                history: entries,
+                isActive: true
+            };
+
+            const display = document.getElementById('storyDisplay');
+            display.innerHTML = '';
+
+            // Rebuild story display
+            entries.forEach(entry => {
+                const storyEntry = document.createElement('div');
+                storyEntry.className = `story-entry ${entry.type}`;
+                
+                const label = document.createElement('div');
+                label.className = 'label';
+                label.textContent = entry.type === 'system' ? '📜 Dungeon Master' : '⚔️ You';
+                
+                const content = document.createElement('div');
+                content.className = 'text';
+                content.textContent = entry.text;
+                
+                storyEntry.appendChild(label);
+                storyEntry.appendChild(content);
+                display.appendChild(storyEntry);
+            });
+
+            // Update UI
+            updateCharacterSheet();
+            
+            // Enable input
+            playerInput.disabled = false;
+            document.getElementById('submitBtn').disabled = false;
+            playerInput.focus();
+
+            // Scroll to bottom
+            display.scrollTop = display.scrollHeight;
+
+            alert('Story loaded successfully! Your adventure continues...');
+
+        } catch (error) {
+            alert('Error loading save file: ' + error.message);
+            console.error('Load error:', error);
+        }
+    };
+
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+function resetGame() {
+    if (confirm('Are you sure you want to reset the game? All progress will be lost.')) {
+        location.reload();
+    }
+}
+</script>
+</body>
+</html>
