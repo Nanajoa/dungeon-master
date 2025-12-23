@@ -416,7 +416,7 @@ def generate_smart_fallback(context, action):
 
 # ============= ROUTES =============
 
-@app.route('/')
+@app.route('/', methods=["GET"])
 def serve_frontend():
     """Serve the main HTML file"""
     try:
